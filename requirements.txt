@@ -15,3 +15,6 @@ streamlit
 plotly
 python-dotenv
 pmdarima
+missingno
+xgboost
+nbformat

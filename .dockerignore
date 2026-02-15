@@ -1,0 +1,27 @@
+# Ignore virtual environments
+myenv/
+venv/
+.env/
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore notebooks
+*.ipynb
+
+# Ignore database except one CSV
+database/*
+!database/raw_data/
+!database/raw_data/DIM_PROPERTY_LOCATION.csv
+
+# Ignore only training dataset
+#model/x_tree.csv
+model/*.ipynb
+
+# Ignore local cache
+__pycache__/
+*.pyc
+
+# Ignore stray dockerfiles
+Dockerfile*

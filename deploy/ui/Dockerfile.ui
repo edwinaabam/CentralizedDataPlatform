@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY deploy/ui/requirements_ui.txt .
+RUN pip install --no-cache-dir -r requirements_ui.txt
+
+# Copy only UI code
+COPY deploy/ui ./deploy/ui
+
+# Copy only data required for UI filters
+COPY database/raw_data/DIM_PROPERTY_LOCATION.csv ./database/raw_data/
+
+EXPOSE 8501
+
+CMD ["streamlit", "run", "deploy/ui/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]

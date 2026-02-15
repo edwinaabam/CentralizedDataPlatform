@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api/Dockerfile.api
+    container_name: alloytower_api
+    ports:
+      - "8000:8000"
+
+  ui:
+    build:
+      context: .
+      dockerfile: deploy/ui/Dockerfile.ui
+    container_name: alloytower_ui
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    environment:
+      - API_URL=http://api:8000

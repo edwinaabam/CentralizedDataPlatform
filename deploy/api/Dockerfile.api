@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY deploy/api/requirements_api.txt .
+RUN pip install --no-cache-dir -r requirements_api.txt
+
+# Copy only API code
+COPY deploy/api ./deploy/api
+
+# Copy model artifacts ONLY (not training data)
+COPY model/rf_pkl ./model/rf_pkl
+COPY model/xgb_pkl ./model/xgb_pkl
+COPY model/sarimax_model.pkl ./model/
+COPY model/feature_schema.json ./model/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "deploy.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

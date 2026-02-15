@@ -1,1 +1,40 @@
+# Environment
+.env
 myenv/
+venv/
+
+# Notebooks
+*.ipynb
+
+# EDA / Cleaning
+EDA/
+data_cleaning/
+
+# Raw Data
+database/old_data/
+database/property_display_data.csv
+database/property_price_dataset.csv
+database/raw_data/
+
+# Snowflake connection script
+database/snowflakconn.py
+
+# MLflow
+model/mlruns/
+model/mlflow.db
+
+# Training datasets
+model/x_tree.csv
+model/sarimax_pkl/
+
+# Images & figures
+model/img/
+model/iframe_figures/
+
+# Reports & docs
+*.docx
+*.pdf
+
+# Python cache
+__pycache__/
+*.pyc
