@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 from PIL import Image
 import json
@@ -12,14 +12,12 @@ st.set_page_config(page_title="AlloyTower RealEstate", layout="wide")
 # ==========================================
 # PROJECT ROOT (Cloud Safe)
 # ==========================================
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(BASE_DIR))
 
 # ==========================================
 # LOAD MODELS (LOCAL - NO API)
 # ==========================================
-
 rf_single = pickle.load(open(
     os.path.join(PROJECT_ROOT, "model", "rf_pkl", "rf_Single_Family.pkl"), "rb"))
 
@@ -33,31 +31,8 @@ xgb_fallback = pickle.load(open(
     os.path.join(PROJECT_ROOT, "model", "xgb_pkl", "xgb_fallback.pkl"), "rb"))
 
 # ==========================================
-# SAFE SARIMAX LOAD (FROM JSON SCHEMA)
-# ==========================================
-
-#with open(os.path.join(PROJECT_ROOT, "model", "sarimax_schema.json")) as f:
-#    sarimax_params = json.load(f)
-
-from statsmodels.tsa.statespace.sarimax import SARIMAXResults
-sarimax_params = SARIMAXResults.load(
-    os.path.join(PROJECT_ROOT, "model", "sarimax_model.json")
-)
-
-dummy_series = np.zeros(50)
-
-sarimax_temp_model = SARIMAX(
-    dummy_series,
-    order=(2,1,3),              # <-- PUT YOUR REAL ORDER HERE
-    seasonal_order=(1,1,1,12)   # <-- PUT YOUR REAL SEASONAL ORDER HERE
-)
-
-sarimax_model = sarimax_temp_model.filter(sarimax_params)
-
-# ==========================================
 # Sidebar Logo
 # ==========================================
-
 logo = Image.open(os.path.join(PROJECT_ROOT, "deploy", "ui", "logo.png"))
 st.sidebar.image(logo, width="stretch")
 st.sidebar.markdown("## AlloyTower Real Estate")
@@ -65,7 +40,6 @@ st.sidebar.markdown("## AlloyTower Real Estate")
 # ==========================================
 # Top Banner
 # ==========================================
-
 st.markdown("""
     <div style="
         background-color:#1e7f4f;
@@ -87,7 +61,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ==========================================
 # Tabs
 # ==========================================
-
 tab1, tab2, tab3 = st.tabs([
     "📊 Market Insights Dashboard",
     "🏠 Property Valuation",
@@ -97,148 +70,84 @@ tab1, tab2, tab3 = st.tabs([
 # ==========================================
 # 1️⃣ DASHBOARD
 # ==========================================
-
 with tab1:
-
     st.subheader("AlloyTower Analytics Dashboard")
-
     powerbi_url = "https://app.powerbi.com/reportEmbed?reportId=c0f12726-823d-4cf8-b7fd-0a575bec286a&autoAuth=true&ctid=5f3c9581-2d3f-469e-acf3-b6065c0e681a&actionBarEnabled=true"
-
-    st.components.v1.iframe(
-        powerbi_url,
-        height=700,
-        scrolling=True
-    )
+    st.components.v1.iframe(powerbi_url, height=700, scrolling=True)
 
 # ==========================================
 # 2️⃣ PROPERTY VALUATION
 # ==========================================
-
 with tab2:
-
     st.subheader("Property Valuation Engine")
 
-    x_tree = pd.read_csv(
-        os.path.join(PROJECT_ROOT, "model", "x_tree.csv")
-    )
+    x_tree = pd.read_csv(os.path.join(PROJECT_ROOT, "model", "x_tree.csv"))
     x_tree["PROPERTY_ID"] = x_tree["PROPERTY_ID"].astype(str)
 
-    df_location = pd.read_csv(
-        os.path.join(PROJECT_ROOT, "database", "raw_data", "DIM_PROPERTY_LOCATION.csv")
-    )
-
+    df_location = pd.read_csv(os.path.join(PROJECT_ROOT, "database", "raw_data", "DIM_PROPERTY_LOCATION.csv"))
     df_location.columns = df_location.columns.str.strip().str.upper()
     df_location["PROPERTY_ID"] = df_location["PROPERTY_ID"].astype(str)
 
     df = x_tree.merge(df_location, on="PROPERTY_ID", how="left")
 
-    with open(
-        os.path.join(PROJECT_ROOT, "model", "feature_schema.json")
-    ) as f:
+    with open(os.path.join(PROJECT_ROOT, "model", "feature_schema.json")) as f:
         feature_columns = json.load(f)
 
     # LOCATION FILTERS
-
     st.markdown("### Location")
-
     col1, col2 = st.columns(2)
-
     with col1:
         state = st.selectbox("State", sorted(df["STATE"].dropna().unique()))
-
     df_state = df[df["STATE"] == state]
-
     with col2:
         county = st.selectbox("County", sorted(df_state["COUNTY"].dropna().unique()))
-
     df_county = df_state[df_state["COUNTY"] == county]
 
     col3, col4 = st.columns(2)
-
     with col3:
-        zipcode = st.selectbox(
-            "Zip Code",
-            sorted(df_county["ZIP_CODE"].dropna().unique())
-        )
-
+        zipcode = st.selectbox("Zip Code", sorted(df_county["ZIP_CODE"].dropna().unique()))
     df_zip = df_county[df_county["ZIP_CODE"] == zipcode]
 
+    # PROPERTY TYPE
     st.markdown("### Property Type")
-
-    property_type = st.selectbox(
-        "Property Type",
-        sorted(df_zip["PROPERTY_TYPE"].dropna().unique())
-    )
-
+    property_type = st.selectbox("Property Type", sorted(df_zip["PROPERTY_TYPE"].dropna().unique()))
     df_type = df_zip[df_zip["PROPERTY_TYPE"] == property_type]
 
+    # PROPERTY FEATURES
     st.markdown("### Property Features")
-
     col5, col6 = st.columns(2)
-
     with col5:
-        bedrooms = st.selectbox(
-            "Bedrooms",
-            sorted(df_type["BEDROOMS"].unique())
-        )
-
+        bedrooms = st.selectbox("Bedrooms", sorted(df_type["BEDROOMS"].unique()))
     df_bed = df_type[df_type["BEDROOMS"] == bedrooms]
-
     with col6:
-        bathrooms = st.selectbox(
-            "Bathrooms",
-            sorted(df_bed["BATHROOMS"].unique())
-        )
-
+        bathrooms = st.selectbox("Bathrooms", sorted(df_bed["BATHROOMS"].unique()))
     df_bath = df_bed[df_bed["BATHROOMS"] == bathrooms]
 
     col7, col8 = st.columns(2)
-
     with col7:
-        sqft = st.selectbox(
-            "Square Footage",
-            sorted(df_bath["SQUARE_FOOTAGE"].unique())
-        )
-
+        sqft = st.selectbox("Square Footage", sorted(df_bath["SQUARE_FOOTAGE"].unique()))
     df_sq = df_bath[df_bath["SQUARE_FOOTAGE"] == sqft]
-
     with col8:
-        lot_size = st.selectbox(
-            "Lot Size",
-            sorted(df_sq["LOT_SIZE"].unique())
-        )
-
+        lot_size = st.selectbox("Lot Size", sorted(df_sq["LOT_SIZE"].unique()))
     df_final = df_sq[df_sq["LOT_SIZE"] == lot_size]
 
     st.divider()
-
     if df_final.empty:
         st.warning("No properties match selected criteria.")
     else:
-
         st.markdown("### Property Summary")
-
         colA, colB, colC, colD = st.columns(4)
         colA.metric("Bedrooms", bedrooms)
         colB.metric("Bathrooms", bathrooms)
         colC.metric("Sqft", sqft)
         colD.metric("Lot Size", lot_size)
-
         st.divider()
 
         if st.button("Estimate Property Value"):
-
             predictions = []
-
             for _, row in df_final.iterrows():
-
-                feature_vector = [
-                    float(row[col]) if col in row else 0.0
-                    for col in feature_columns
-                ]
-
+                feature_vector = [float(row[col]) if col in row else 0.0 for col in feature_columns]
                 feature_array = [feature_vector]
-
                 if property_type == "Single Family":
                     prediction = rf_single.predict(feature_array)
                 elif property_type == "Condo":
@@ -247,95 +156,183 @@ with tab2:
                     prediction = xgb_multi.predict(feature_array)
                 else:
                     prediction = xgb_fallback.predict(feature_array)
-
                 predictions.append(prediction[0])
-
             avg_prediction = sum(predictions) / len(predictions)
-
             st.metric(
                 label=f"Estimated Value ({property_type} in {county}, {state})",
                 value=f"£{avg_prediction:,.0f}"
             )
 
 # ==========================================
-# 3️⃣ PRICE FORECAST
+# 3️⃣ PRICE FORECAST (Dynamic + Feature Aware)
+# ==========================================
+
+# ==========================================
+# 3️⃣ PRICE FORECAST (Dynamic + Feature Summary)
 # ==========================================
 
 with tab3:
-
     st.subheader("Market Price Forecast Engine")
 
-    df_location = pd.read_csv(
-        os.path.join(PROJECT_ROOT, "database", "raw_data", "DIM_PROPERTY_LOCATION.csv")
+    # Load property-level dataset
+    forecast_df = pd.read_csv(
+        os.path.join(PROJECT_ROOT, "model", "pf_df.csv"),
+        parse_dates=["EVENT_DATE"]
     )
 
-    st.markdown("### Forecast Context")
+    forecast_df = forecast_df.dropna(subset=["EVENT_PRICE"])
+    forecast_df["EVENT_DATE"] = pd.to_datetime(forecast_df["EVENT_DATE"])
 
-    col1, col2 = st.columns(2)
+    st.markdown("### Select Market Context")
 
+    # Filters: State, City, Zip Code, Property Type
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        forecast_state = st.selectbox(
+        selected_state = st.selectbox(
             "State",
-            sorted(df_location["STATE"].dropna().unique()),
+            sorted(forecast_df["STATE"].dropna().unique()),
             key="forecast_state"
         )
-
     with col2:
-        forecast_property_type = st.selectbox(
+        selected_city = st.selectbox(
+            "City",
+            sorted(forecast_df["CITY"].dropna().unique()),
+            key="forecast_city"
+        )
+    with col3:
+        selected_zip = st.selectbox(
+            "ZIP Code",
+            sorted(forecast_df["ZIP_CODE"].dropna().unique()),
+            key="forecast_zip"
+        )
+    with col4:
+        selected_property_type = st.selectbox(
             "Property Type",
-            ["Single Family", "Condo", "Multi-Family"],
-            key="forecast_property_type"
+            sorted(forecast_df["PROPERTY_TYPE"].dropna().unique()),
+            key="forecast_type"
         )
 
+    # -------------------------------------
+    # Apply fallback filtering
+    # -------------------------------------
+    filtered_df = forecast_df[
+        (forecast_df["STATE"] == selected_state) &
+        (forecast_df["CITY"] == selected_city) &
+        (forecast_df["ZIP_CODE"] == selected_zip) &
+        (forecast_df["PROPERTY_TYPE"] == selected_property_type)
+    ]
+
+    # Fallback hierarchy
+    if filtered_df.empty:
+        filtered_df = forecast_df[
+            (forecast_df["STATE"] == selected_state) &
+            (forecast_df["CITY"] == selected_city) &
+            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
+        ]
+    if filtered_df.empty:
+        filtered_df = forecast_df[
+            (forecast_df["STATE"] == selected_state) &
+            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
+        ]
+    if filtered_df.empty:
+        filtered_df = forecast_df[
+            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
+        ]
+    if filtered_df.empty:
+        filtered_df = forecast_df.copy()  # fallback to all data
+
+    # Remove extreme outliers (price over 99th percentile)
+    upper_cutoff = filtered_df["EVENT_PRICE"].quantile(0.99)
+    filtered_df = filtered_df[filtered_df["EVENT_PRICE"] <= upper_cutoff]
+
     st.divider()
-
-    st.markdown("### Forecast Settings")
-
+    st.markdown("### Forecast Horizon")
     forecast_horizon = st.selectbox(
-        "Forecast Horizon (Months)",
+        "Months to Forecast",
         options=[3, 6, 9, 12, 18, 24, 30, 36],
         index=3,
-        key="forecast_horizon"
+        key="forecast_horizon_months"
     )
 
     st.divider()
 
     if st.button("Generate Market Forecast", key="forecast_button"):
 
-        steps = forecast_horizon
+        # -------------------------------------
+        # Aggregate monthly
+        # -------------------------------------
+        filtered_df["YEAR_MONTH"] = filtered_df["EVENT_DATE"].dt.to_period("M")
+        monthly_df = (
+            filtered_df.groupby("YEAR_MONTH")
+            .agg({
+                "EVENT_PRICE": "mean",
+                "TAX_2024": "mean",
+                "BEDROOMS": "mean",
+                "BATHROOMS": "mean",
+                "SQUARE_FOOTAGE": "mean",
+                "LOT_SIZE": "mean",
+                "PROPERTY_AGE": "mean"
+            })
+        )
+        monthly_df.index = monthly_df.index.to_timestamp()
+        monthly_df = monthly_df.sort_index()
 
-        forecast = sarimax_model.forecast(steps=steps)
+        if len(monthly_df) < 12:
+            st.warning("Not enough historical data for a reliable forecast. Showing best effort forecast.")
+        
+        # -------------------------------------
+        # SARIMAX Model
+        # -------------------------------------
+        exog_vars = ["TAX_2024", "BEDROOMS", "BATHROOMS", "SQUARE_FOOTAGE", "LOT_SIZE", "PROPERTY_AGE"]
 
-        forecast_values = forecast.tolist()
+        sarimax_model = SARIMAX(
+            endog=monthly_df["EVENT_PRICE"],
+            exog=monthly_df[exog_vars],
+            order=(1, 1, 1),
+            seasonal_order=(1, 1, 1, 12),
+            enforce_stationarity=False,
+            enforce_invertibility=False
+        ).fit(disp=False)
+
+        # Future exogenous values (last known values repeated)
+        future_exog = pd.DataFrame([monthly_df[exog_vars].iloc[-1]] * forecast_horizon, columns=exog_vars)
+
+        # Forecast
+        forecast_result = sarimax_model.get_forecast(steps=forecast_horizon, exog=future_exog)
+        forecast_values = forecast_result.predicted_mean.tolist()
 
         projected_price = forecast_values[-1]
         avg_forecast_price = sum(forecast_values) / len(forecast_values)
-
         growth_absolute = forecast_values[-1] - forecast_values[0]
         growth_percent = (growth_absolute / forecast_values[0]) * 100
 
-        st.markdown("### Forecast Summary")
+        # -------------------------------------
+        # Dynamic Property Feature Summary
+        # -------------------------------------
+        st.markdown("### Regional Property Profile (Based on Selected Filters)")
 
-        colA, colB, colC = st.columns(3)
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Avg Bedrooms", f"{monthly_df['BEDROOMS'].iloc[-1]:.1f}")
+        col2.metric("Avg Bathrooms", f"{monthly_df['BATHROOMS'].iloc[-1]:.1f}")
+        col3.metric("Avg Sqft", f"{monthly_df['SQUARE_FOOTAGE'].iloc[-1]:,.0f}")
 
-        colA.metric(
-            f"Projected Price ({forecast_horizon} Months)",
-            f"£{projected_price:,.0f}"
-        )
-
-        colB.metric(
-            "Average Forecasted Price",
-            f"£{avg_forecast_price:,.0f}"
-        )
-
-        colC.metric(
-            "Projected Growth",
-            f"{growth_percent:.2f}%",
-            f"£{growth_absolute:,.0f}"
-        )
+        col4, col5, col6 = st.columns(3)
+        col4.metric("Avg Lot Size", f"{monthly_df['LOT_SIZE'].iloc[-1]:,.0f}")
+        col5.metric("Avg Property Age", f"{monthly_df['PROPERTY_AGE'].iloc[-1]:.1f}")
+        col6.metric("Avg Tax", f"£{monthly_df['TAX_2024'].iloc[-1]:,.0f}")
 
         st.divider()
 
+        # -------------------------------------
+        # Forecast Summary Cards
+        # -------------------------------------
+        st.markdown("### Forecast Summary")
+        colA, colB, colC = st.columns(3)
+        colA.metric(f"Projected Price ({forecast_horizon} Months)", f"£{projected_price:,.0f}")
+        colB.metric("Average Forecasted Price", f"£{avg_forecast_price:,.0f}")
+        colC.metric("Projected Growth", f"{growth_percent:.2f}%", f"£{growth_absolute:,.0f}")
+
+        # Trend insight
         if growth_percent > 0:
             trend_message = "Market is projected to grow."
         elif growth_percent < 0:
@@ -347,11 +344,10 @@ with tab3:
             f"""
             📈 **Market Insight**
 
-            The {forecast_property_type} segment in {forecast_state}
+            The {selected_property_type} market in {selected_state}, {selected_city}, ZIP {selected_zip}
             is projected to change by **{growth_percent:.2f}%**
             over the next **{forecast_horizon} months**.
 
             {trend_message}
             """
         )
-
