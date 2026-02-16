@@ -11,10 +11,11 @@ pydantic
 requests
 huggingface-hub
 ipykernel
-streamlit
+streamlit==1.32.2
 plotly
 python-dotenv
 pmdarima
 missingno
 xgboost
 nbformat
+altair==4.2.2
