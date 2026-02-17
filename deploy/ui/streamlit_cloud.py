@@ -229,6 +229,10 @@ with tab3:
         # -----------------------------
         # Monthly Median Aggregation
         # -----------------------------
+
+        filtered_df = filtered_df.copy()
+        #filtered_df.loc[:, "YEAR_MONTH"] = filtered_df["EVENT_DATE"].dt.to_period("M")
+
         filtered_df["YEAR_MONTH"] = filtered_df["EVENT_DATE"].dt.to_period("M")
         monthly_df = (
             filtered_df.groupby("YEAR_MONTH")
