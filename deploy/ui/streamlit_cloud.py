@@ -163,18 +163,17 @@ with tab2:
                 value=f"£{avg_prediction:,.0f}"
             )
 
-# ==========================================
-# 3️⃣ PRICE FORECAST (Dynamic + Feature Aware)
-# ==========================================
 
 # ==========================================
-# 3️⃣ PRICE FORECAST (Dynamic + Feature Summary)
+# 3️⃣ PRICE FORECAST (State + Property Type)
 # ==========================================
 
 with tab3:
     st.subheader("Market Price Forecast Engine")
 
+    # -----------------------------
     # Load property-level dataset
+    # -----------------------------
     forecast_df = pd.read_csv(
         os.path.join(PROJECT_ROOT, "model", "pf_df.csv"),
         parse_dates=["EVENT_DATE"]
@@ -185,8 +184,10 @@ with tab3:
 
     st.markdown("### Select Market Context")
 
-    # Filters: State, City, Zip Code, Property Type
-    col1, col2, col3, col4 = st.columns(4)
+    # -----------------------------
+    # Filters: State + Property Type
+    # -----------------------------
+    col1, col2 = st.columns(2)
     with col1:
         selected_state = st.selectbox(
             "State",
@@ -194,99 +195,81 @@ with tab3:
             key="forecast_state"
         )
     with col2:
-        selected_city = st.selectbox(
-            "City",
-            sorted(forecast_df["CITY"].dropna().unique()),
-            key="forecast_city"
-        )
-    with col3:
-        selected_zip = st.selectbox(
-            "ZIP Code",
-            sorted(forecast_df["ZIP_CODE"].dropna().unique()),
-            key="forecast_zip"
-        )
-    with col4:
         selected_property_type = st.selectbox(
             "Property Type",
             sorted(forecast_df["PROPERTY_TYPE"].dropna().unique()),
             key="forecast_type"
         )
 
-    # -------------------------------------
-    # Apply fallback filtering
-    # -------------------------------------
+    # -----------------------------
+    # Filter by selection
+    # -----------------------------
     filtered_df = forecast_df[
         (forecast_df["STATE"] == selected_state) &
-        (forecast_df["CITY"] == selected_city) &
-        (forecast_df["ZIP_CODE"] == selected_zip) &
         (forecast_df["PROPERTY_TYPE"] == selected_property_type)
     ]
 
-    # Fallback hierarchy
     if filtered_df.empty:
-        filtered_df = forecast_df[
-            (forecast_df["STATE"] == selected_state) &
-            (forecast_df["CITY"] == selected_city) &
-            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
-        ]
-    if filtered_df.empty:
-        filtered_df = forecast_df[
-            (forecast_df["STATE"] == selected_state) &
-            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
-        ]
-    if filtered_df.empty:
-        filtered_df = forecast_df[
-            (forecast_df["PROPERTY_TYPE"] == selected_property_type)
-        ]
-    if filtered_df.empty:
-        filtered_df = forecast_df.copy()  # fallback to all data
-
-    # Remove extreme outliers (price over 99th percentile)
-    upper_cutoff = filtered_df["EVENT_PRICE"].quantile(0.99)
-    filtered_df = filtered_df[filtered_df["EVENT_PRICE"] <= upper_cutoff]
+        st.warning("No data available for this selection.")
+        st.stop()
 
     st.divider()
+
     st.markdown("### Forecast Horizon")
     forecast_horizon = st.selectbox(
         "Months to Forecast",
-        options=[3, 6, 9, 12, 18, 24, 30, 36],
+        [3, 6, 9, 12, 18, 24],
         index=3,
-        key="forecast_horizon_months"
+        key="forecast_horizon"
     )
-
     st.divider()
 
     if st.button("Generate Market Forecast", key="forecast_button"):
 
-        # -------------------------------------
-        # Aggregate monthly
-        # -------------------------------------
+        # -----------------------------
+        # Monthly Median Aggregation
+        # -----------------------------
         filtered_df["YEAR_MONTH"] = filtered_df["EVENT_DATE"].dt.to_period("M")
         monthly_df = (
             filtered_df.groupby("YEAR_MONTH")
             .agg({
-                "EVENT_PRICE": "mean",
-                "TAX_2024": "mean",
-                "BEDROOMS": "mean",
-                "BATHROOMS": "mean",
-                "SQUARE_FOOTAGE": "mean",
-                "LOT_SIZE": "mean",
-                "PROPERTY_AGE": "mean"
+                "EVENT_PRICE": "median",
+                "TAX_2024": "median",
+                "BEDROOMS": "median",
+                "BATHROOMS": "median",
+                "SQUARE_FOOTAGE": "median",
+                "LOT_SIZE": "median",
+                "PROPERTY_AGE": "median"
             })
         )
+
         monthly_df.index = monthly_df.index.to_timestamp()
         monthly_df = monthly_df.sort_index()
 
-        if len(monthly_df) < 12:
-            st.warning("Not enough historical data for a reliable forecast. Showing best effort forecast.")
-        
-        # -------------------------------------
+        # -----------------------------
+        # Fill missing months
+        # -----------------------------
+        full_range = pd.date_range(
+            start=monthly_df.index.min(),
+            end=monthly_df.index.max(),
+            freq="MS"
+        )
+        monthly_df = monthly_df.reindex(full_range)
+        monthly_df = monthly_df.ffill()
+
+        # -----------------------------
+        # Remove extreme outliers
+        # -----------------------------
+        upper_cutoff = monthly_df["EVENT_PRICE"].quantile(0.99)
+        monthly_df = monthly_df[monthly_df["EVENT_PRICE"] <= upper_cutoff]
+
+        # -----------------------------
         # SARIMAX Model
-        # -------------------------------------
+        # -----------------------------
         exog_vars = ["TAX_2024", "BEDROOMS", "BATHROOMS", "SQUARE_FOOTAGE", "LOT_SIZE", "PROPERTY_AGE"]
 
         sarimax_model = SARIMAX(
-            endog=monthly_df["EVENT_PRICE"],
+            monthly_df["EVENT_PRICE"],
             exog=monthly_df[exog_vars],
             order=(1, 1, 1),
             seasonal_order=(1, 1, 1, 12),
@@ -294,10 +277,11 @@ with tab3:
             enforce_invertibility=False
         ).fit(disp=False)
 
-        # Future exogenous values (last known values repeated)
+        # -----------------------------
+        # Future exogenous values
+        # -----------------------------
         future_exog = pd.DataFrame([monthly_df[exog_vars].iloc[-1]] * forecast_horizon, columns=exog_vars)
 
-        # Forecast
         forecast_result = sarimax_model.get_forecast(steps=forecast_horizon, exog=future_exog)
         forecast_values = forecast_result.predicted_mean.tolist()
 
@@ -306,33 +290,35 @@ with tab3:
         growth_absolute = forecast_values[-1] - forecast_values[0]
         growth_percent = (growth_absolute / forecast_values[0]) * 100
 
-        # -------------------------------------
-        # Dynamic Property Feature Summary
-        # -------------------------------------
-        st.markdown("### Regional Property Profile (Based on Selected Filters)")
+        # -----------------------------
+        # Property Summary Cards
+        # -----------------------------
+        st.markdown("### Regional Property Profile (Median Values)")
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Avg Bedrooms", f"{monthly_df['BEDROOMS'].iloc[-1]:.1f}")
-        col2.metric("Avg Bathrooms", f"{monthly_df['BATHROOMS'].iloc[-1]:.1f}")
-        col3.metric("Avg Sqft", f"{monthly_df['SQUARE_FOOTAGE'].iloc[-1]:,.0f}")
+        col1.metric("Bedrooms", f"{monthly_df['BEDROOMS'].iloc[-1]:.1f}")
+        col2.metric("Bathrooms", f"{monthly_df['BATHROOMS'].iloc[-1]:.1f}")
+        col3.metric("Square Footage", f"{monthly_df['SQUARE_FOOTAGE'].iloc[-1]:,.0f}")
 
         col4, col5, col6 = st.columns(3)
-        col4.metric("Avg Lot Size", f"{monthly_df['LOT_SIZE'].iloc[-1]:,.0f}")
-        col5.metric("Avg Property Age", f"{monthly_df['PROPERTY_AGE'].iloc[-1]:.1f}")
-        col6.metric("Avg Tax", f"£{monthly_df['TAX_2024'].iloc[-1]:,.0f}")
+        col4.metric("Lot Size", f"{monthly_df['LOT_SIZE'].iloc[-1]:,.0f}")
+        col5.metric("Property Age", f"{monthly_df['PROPERTY_AGE'].iloc[-1]:.1f}")
+        col6.metric("Tax", f"£{monthly_df['TAX_2024'].iloc[-1]:,.0f}")
 
         st.divider()
 
-        # -------------------------------------
+        # -----------------------------
         # Forecast Summary Cards
-        # -------------------------------------
+        # -----------------------------
         st.markdown("### Forecast Summary")
         colA, colB, colC = st.columns(3)
-        colA.metric(f"Projected Price ({forecast_horizon} Months)", f"£{projected_price:,.0f}")
+        colA.metric(f"Projected Price ({forecast_horizon} months)", f"£{projected_price:,.0f}")
         colB.metric("Average Forecasted Price", f"£{avg_forecast_price:,.0f}")
         colC.metric("Projected Growth", f"{growth_percent:.2f}%", f"£{growth_absolute:,.0f}")
 
-        # Trend insight
+        # -----------------------------
+        # Trend Insight
+        # -----------------------------
         if growth_percent > 0:
             trend_message = "Market is projected to grow."
         elif growth_percent < 0:
@@ -344,7 +330,7 @@ with tab3:
             f"""
             📈 **Market Insight**
 
-            The {selected_property_type} market in {selected_state}, {selected_city}, ZIP {selected_zip}
+            The {selected_property_type} market in {selected_state}
             is projected to change by **{growth_percent:.2f}%**
             over the next **{forecast_horizon} months**.
 
