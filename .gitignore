@@ -24,7 +24,7 @@ model/mlruns/
 model/mlflow.db
 
 # Training datasets
-model/x_tree.csv
+#model/x_tree.csv
 model/sarimax_pkl/
 
 # Images & figures
