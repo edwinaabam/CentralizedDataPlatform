@@ -30,12 +30,18 @@ xgb_multi = pickle.load(open(
 xgb_fallback = pickle.load(open(
     os.path.join(PROJECT_ROOT, "model", "xgb_pkl", "xgb_fallback.pkl"), "rb"))
 
+
 # ==========================================
-# Sidebar Logo
+# Sidebar Logo (Cloud Safe)
 # ==========================================
-logo = Image.open(os.path.join(PROJECT_ROOT, "deploy", "ui", "logo.png"))
-st.sidebar.image(logo, use_container_width=True)
+logo_path = os.path.join(BASE_DIR, "logo.png")
+
+if os.path.exists(logo_path):
+    logo = Image.open(logo_path)
+    st.sidebar.image(logo, use_container_width=True)
+
 st.sidebar.markdown("## AlloyTower Real Estate")
+
 
 # ==========================================
 # Top Banner
