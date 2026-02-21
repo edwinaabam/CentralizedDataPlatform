@@ -47,7 +47,7 @@ st.sidebar.markdown("## AlloyTower Real Estate")
 # ==========================================
 st.markdown("""
     <div style="
-        background-color:#5ec2b7;
+        background-color:#25a18e;
         padding:12px 20px;
         border-radius:10px;
         text-align:center;
