@@ -47,19 +47,33 @@ st.sidebar.markdown("## AlloyTower Real Estate")
 # ==========================================
 st.markdown("""
     <div style="
-        background-color:#1e7f4f;
-        padding:12px 20px;   /* reduced from 25px */
+        background-color:#62c3b3;
+        padding:12px 20px;
         border-radius:10px;
         text-align:center;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
     ">
-        <h1 style="color:white; margin:0;">
+        <h1 style="
+            color:white;
+            margin:0;
+            font-size:28px;
+            font-weight:600;
+        ">
             AlloyTower Real Estate
         </h1>
-        <p style="color:white; margin:5px 0 0 0; font-size:16px;">
+        <p style="
+            color:white;
+            margin:4px 0 0 0;
+            font-size:16px;
+        ">
             Intelligent Property Valuation & Price Forecasting Platform
         </p>
     </div>
 """, unsafe_allow_html=True)
+
 
 st.markdown("<br>", unsafe_allow_html=True)
 
